@@ -20,7 +20,7 @@ import yaml
 import asyncio
 import asyncpg
 
-from postile.sql import single_layer
+from sql import single_layer
 
 # https://github.com/openstreetmap/mapnik-stylesheets/blob/master/zoom-to-scale.txt
 # map width in meters for web mercator 3857
