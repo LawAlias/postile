@@ -45,5 +45,12 @@ Then layer `boundaries` can be served with:
 
 `fields` is optional, and when absent only geometries are encoded in the vector tile.
 
+You can specify schema in this way:
+
+    http://localhost:8080/public.xxx/z/x/y.pbf
+    
+the default schema is 'public'
+
 ---
+
 *For a concrete example using OpenMapTiles schema see [this tutorial](https://github.com/ldgeo/postile-openmaptiles)*
