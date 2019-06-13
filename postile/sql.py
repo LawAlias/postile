@@ -4,7 +4,7 @@ Module containing SQL raw requests
 
 
 single_layer = """
-select st_asmvt(tile, '{layer}', 4096)
+select st_asmvt(tile, '{schema}.{layer}', 4096)
 from (
     with tmp as (
         select st_srid({geom}) as srid

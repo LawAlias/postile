@@ -40,7 +40,7 @@ app = Sanic()
 
 class Config:
     # postgresql DSN
-    dsn = 'postgres://{pguser}:{pgpassword}@{pghost}:{pgport}/{pgdatabase}'
+    dsn = 'postgresql://user:pwd@localhost:port/database'
     # tm2source prepared query
     tm2query = None
     # style configuration file
@@ -121,7 +121,7 @@ async def get_tile_tm2(request, x, y, z):
     scale_denominator = zoom_to_scale_denom(z)
 
     # compute mercator bounds
-    bounds = mercantile.xy_bounds(x, y, z)
+    bounds = mercantile.xy_bounds(x, y, z)#计算出的范围不对
     bbox = f"st_makebox2d(st_point({bounds.left}, {bounds.bottom}), st_point({bounds.right},{bounds.top}))"
 
     sql = Config.tm2query.format(
@@ -130,15 +130,18 @@ async def get_tile_tm2(request, x, y, z):
         pixel_width=256,
         pixel_height=256,
     )
+    print(sql)
     logger.debug(sql)
 
     async with Config.db.acquire() as conn:
         # join tiles into one bytes string except null tiles
         rows = await conn.fetch(sql)
+        for row in rows:
+            if row[0]:
+                print(row[0].encode('utf-8'))
         pbf = b''.join([row[0] for row in rows if row[0]])
-
     return response.raw(
-        pbf,
+        pbf.encode('utf-8'),
         headers={"Content-Type": "application/x-protobuf"}
     )
 
@@ -148,7 +151,9 @@ async def get_tile_postgis(request, x, y, z, layer):
     """
     if ' ' in layer:
         return response.text('bad layer name: {}'.format(layer), status=404)
-
+    schema='public'
+    if '.' in layer:
+        schema,layer=layer.split('.')
     # get fields given in parameters
     fields = ',' + request.raw_args['fields'] if 'fields' in request.raw_args else ''
     # get geometry column name from query args else geom is used
@@ -163,7 +168,7 @@ async def get_tile_postgis(request, x, y, z, layer):
     scale = resolution(z)
 
     sql = single_layer.format(**locals(), OUTPUT_SRID=OUTPUT_SRID)
-
+    print(sql)
     logger.debug(sql)
 
     async with Config.db.acquire() as conn:
@@ -183,12 +188,12 @@ def main():
     parser.add_argument('--pgdatabase', type=str, help='database name', default='osm')
     parser.add_argument('--pghost', type=str, help='postgres hostname', default='')
     parser.add_argument('--pgport', type=int, help='postgres port', default=5432)
-    parser.add_argument('--pguser', type=str, help='postgres user', default='')
+    parser.add_argument('--pguser', type=str, help='postgres user')
     parser.add_argument('--pgpassword', type=str, help='postgres password', default='')
     parser.add_argument('--listen', type=str, help='listen address', default='127.0.0.1')
-    parser.add_argument('--listen-port', type=str, help='listen port', default=8080)
-    parser.add_argument('--cors', action='store_true', help='make cross-origin AJAX possible')
-    parser.add_argument('--debug', action='store_true', help='activate sanic debug mode')
+    parser.add_argument('--listen-port', type=str, help='listen port', default=3351)
+    parser.add_argument('--cors', action='store_true', help='make cross-origin AJAX possible',default=True)
+    parser.add_argument('--debug', action='store_true', help='activate sanic debug mode',default=True)
     args = parser.parse_args()
 
     if args.tm2:
